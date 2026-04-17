@@ -5,6 +5,9 @@ import { Link, useLocation } from 'react-router-dom';
 const Sidebar = () => {
   const location = useLocation();
 
+  const hidePaths = ['/', '/signup'];
+  if (hidePaths.includes(location.pathname)) return null;
+
   const ICON_SIZE = 52;
 
   const menuItems = [
