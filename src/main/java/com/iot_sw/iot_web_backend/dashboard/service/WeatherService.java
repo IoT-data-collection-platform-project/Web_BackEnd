@@ -7,11 +7,13 @@ import com.iot_sw.iot_web_backend.dashboard.repository.WeatherRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class WeatherService {
+    private static final DateTimeFormatter TM_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
     private final WeatherRepository weatherRepository;
     private final WeatherAlertService alertService;
@@ -19,18 +21,18 @@ public class WeatherService {
     public WeatherResponseDto getWeather() {
 
         List<WeatherData> list =
-                weatherRepository.findAllByOrderByTmDesc();
+                weatherRepository.findAllByOrderByCreatedAtDesc();
 
         boolean[] alert = alertService.getAlert();
 
         List<WeatherDTO> dtoList = list.stream()
                 .map(w -> new WeatherDTO(
-                        w.getTm(),
-                        w.getWd(),
-                        w.getWs(),
-                        w.getTa(),
-                        w.getHm(),
-                        w.getRn()
+                        w.getCreatedAt() != null ? w.getCreatedAt().format(TM_FORMATTER) : null,
+                        w.getWindDirWd(),
+                        w.getWindSpeedWs(),
+                        w.getTempTa(),
+                        w.getHumidityHm(),
+                        w.getPrecipitationRn()
                 ))
                 .toList();
 
