@@ -63,7 +63,7 @@ public class MqttConfig {
         // "provisioning/request" 토픽과 "telemetry/#" (센서 데이터 전체) 토픽을 구독합니다!
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter("spring-boot-server-inbound", mqttClientFactory(),
-                        "provisioning/request", "telemetry/#");
+                        "provisioning/request", "telemetry/#", "devices/status");
 
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());

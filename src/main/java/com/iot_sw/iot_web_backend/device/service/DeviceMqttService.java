@@ -1,6 +1,7 @@
 package com.iot_sw.iot_web_backend.device.service;
 
 import com.iot_sw.iot_web_backend.device.dto.request.RegisterRequestDTO;
+import com.iot_sw.iot_web_backend.device.dto.request.TurnOffRequestDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -36,6 +37,18 @@ public class DeviceMqttService {
                                                     .macId(json.get("mac_address").asText())
                                                     .ipAddress(json.has("ip_address") ? json.get("ip_address").asText() : "0.0.0.0")
                                                     .build());
+            }
+            else if (topic.equals("devices/status")) {
+                JsonNode json = objectMapper.readTree(payload);
+
+                log.info("[MQTT] 게이트웨이 비정상 종료 감지");
+
+                if(json.get("status").asText().equals("OFFLINE")) {
+                    deviceService.turnOffDevice(TurnOffRequestDTO.builder()
+                            .macId(json.get("mac_address").asText())
+                            .status(json.get("status").asText())
+                            .build());
+                }
             }
             else if (topic.startsWith("telemetry/")) {
                 // 센서 데이터 처리 로직 위임 예정
