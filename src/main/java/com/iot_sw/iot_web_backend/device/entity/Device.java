@@ -44,5 +44,13 @@ public class Device {
         this.location = location;
         this.status = DeviceStatus.ONLINE;
     }
+
+    public void reject() {
+        this.status = DeviceStatus.REJECTED;
+    }
+
+    public void turnOff() {
+        this.status = DeviceStatus.OFFLINE;
+    }
 }
 
