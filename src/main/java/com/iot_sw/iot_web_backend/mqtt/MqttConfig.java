@@ -16,14 +16,15 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 @Configuration
-// 💡 이 어노테이션이 있어야 아까 만든 @MessagingGateway를 스프링이 인식합니다!
+// MqttGateway.java의 @MessagingGateway를 인식
 @IntegrationComponentScan(basePackages = "com.iot_sw.iot_web_backend")
 public class MqttConfig {
 
     private static final String BROKER_URL = "tcp://localhost:1883";
+    // 브로커에 메세지를 발행하는 주체
     private static final String CLIENT_ID = "spring-boot-server-outbound";
 
-    // 1. MQTT 브로커 연결 설정
+    // MQTT 브로커 연결 설정
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
@@ -34,36 +35,36 @@ public class MqttConfig {
         return factory;
     }
 
-    // 2. 메시지가 나갈 통로(Channel) 생성 (MqttGateway에서 지정한 채널명과 똑같아야 함!)
+    // 메시지가 나갈 Channel 생성 (MqttGateway.java에서 통로 지정)
     @Bean
     public MessageChannel mqttOutboundChannel() {
         return new DirectChannel();
     }
 
-    // 3. 실제로 메시지를 브로커로 발송하는 핸들러
+    // 메시지 발행 핸들러, 발행 채널에 들어오는 메시지 처리 설정
     @Bean
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutbound() {
         MqttPahoMessageHandler messageHandler =
                 new MqttPahoMessageHandler(CLIENT_ID, mqttClientFactory());
         messageHandler.setAsync(true);
-        messageHandler.setDefaultTopic("default/topic"); // 기본 토픽 (보낼 때 덮어씌워짐)
+        messageHandler.setDefaultTopic("default/topic"); // 디폴트 토픽
         return messageHandler;
     }
 
+    // 메시지를 읽어올 Channel 생성
     @Bean
     public MessageChannel mqttInboundChannel() {
         return new DirectChannel();
     }
 
-    // 💡 2. 브로커에서 메시지를 빨아들이는 어댑터(구독자) 설정
+    // 구독 어댑터 설정
     @Bean
     public MessageProducer inbound() {
-        // "spring-boot-server-inbound" 라는 이름으로 접속하여,
-        // "provisioning/request" 토픽과 "telemetry/#" (센서 데이터 전체) 토픽을 구독합니다!
+        // "spring-boot-server-inbound" 클라이언트가 특정 토픽들을 구독
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter("spring-boot-server-inbound", mqttClientFactory(),
-                        "provisioning/request", "telemetry/#");
+                        "provisioning/request", "telemetry/#", "devices/status");
 
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());

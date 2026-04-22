@@ -5,14 +5,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// DTO 클래스
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Getter
-public class ApproveRequestDTO {
+public class RejectRequestDTO {
     private String macId;
-    private String name;
-    private String location;
-
 }
