@@ -1,15 +1,25 @@
 package com.iot_sw.iot_web_backend.device.service;
 
 import com.iot_sw.iot_web_backend.device.dto.request.RegisterRequestDTO;
+import com.iot_sw.iot_web_backend.device.dto.request.SensorDataDTO;
 import com.iot_sw.iot_web_backend.device.dto.request.TurnOffRequestDTO;
+import com.iot_sw.iot_web_backend.device.entity.SensorTelemetry;
+import com.iot_sw.iot_web_backend.device.repository.SensorRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.integration.mqtt.support.MqttHeaders;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -17,7 +27,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class DeviceMqttService {
 
     private final DeviceService deviceService;
+    private final SensorRepository sensorRepository;
     private final ObjectMapper objectMapper;
+
+    private final List<SensorTelemetry> buffer = Collections.synchronizedList(new ArrayList<>()); // 안전 큐 느낌
 
     // 구독 채널에 들어온 메시지를 처리
     @ServiceActivator(inputChannel = "mqttInboundChannel")
@@ -50,11 +63,63 @@ public class DeviceMqttService {
                             .build());
                 }
             }
-            else if (topic.startsWith("telemetry/")) {
-                // 센서 데이터 처리 로직 구현 예정
+            else if (topic.startsWith("gateway/") && topic.endsWith("/telemetry")) {
+
+                String[] topicParts = topic.split("/");
+                if (topicParts.length == 3) {
+                    String macAddress = topicParts[1];
+
+                    SensorDataDTO dto = objectMapper.readValue(payload, SensorDataDTO.class);
+
+                    log.info("[센서 수신] MAC: {}, 온도: {}C, TVOC: {}", macAddress, dto.getTemperature(), dto.getTvoc());
+
+                    // DB 배치 인서트 로직
+                    SensorTelemetry entity = SensorTelemetry.builder()
+                            .macAddress(macAddress)
+                            .measuredAt(dto.getMeasuredAt()) // 날짜 자료형 변환
+                            .temperature(BigDecimal.valueOf(dto.getTemperature()))
+                            .humidity(BigDecimal.valueOf(dto.getHumidity()))
+                            .pressure(BigDecimal.valueOf(dto.getPressure()))
+                            .tvoc(dto.getTvoc())
+                            .eco2(dto.getEco2())
+                            .flameValue(dto.getFlameValue())
+                            .build();
+
+                    buffer.add(entity);
+
+                    // 센서 데이터 60개 이상 쌓이면 바로 인서트
+                    if (buffer.size() >= 60) {
+                        flushBuffer();
+                    }
+
+                    // 4. TODO: 비정상 데이터(화재 감지 등) 실시간 알람 로직
+                    // if (sensorData.getFlameValue() < 500) { alertService.triggerFireAlarm(macAddress); }
+                }
             }
         } catch (Exception e) {
             log.error("MQTT 파싱/처리 중 오류: {}", e.getMessage());
+        }
+    }
+
+    // 1분마다 자동 배치 인서트 동작
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void flushBuffer() {
+        if (buffer.isEmpty()) return;
+
+        // 버퍼 복사
+        List<SensorTelemetry> toSave;
+        synchronized (buffer) {
+            toSave = new ArrayList<>(buffer);
+            buffer.clear();
+        }
+
+        try {
+            log.info("[DB] {}개의 데이터를 MariaDB에 배치 인서트 시작", toSave.size());
+            sensorRepository.saveAll(toSave);
+            log.info("[DB] 배치 인서트 성공.");
+        } catch (Exception e) {
+            log.error("[DB] 배치 인서트 실패: {}", e.getMessage());
         }
     }
 }

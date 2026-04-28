@@ -64,7 +64,7 @@ public class MqttConfig {
         // "spring-boot-server-inbound" 클라이언트가 특정 토픽들을 구독
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter("spring-boot-server-inbound", mqttClientFactory(),
-                        "provisioning/request", "telemetry/#", "devices/status");
+                        "provisioning/request", "gateway/+/telemetry", "devices/status");
 
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());

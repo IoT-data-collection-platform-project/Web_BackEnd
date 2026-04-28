@@ -59,7 +59,6 @@ public class PublicApiService {
         byte isStrongWindWarning = alert[0] ? (byte) 1 : (byte) 0;
         byte isDryWarning = alert[1] ? (byte) 1 : (byte) 0;
         int backHoursToCheck = Math.max(MIN_BACK_HOURS, maxBackHours);
-        boolean attemptedExternalCall = false;
 
         for (int back = 0; back < backHoursToCheck; back++) {
             LocalDateTime candidate = base.minusHours(back);
@@ -67,7 +66,6 @@ public class PublicApiService {
             if (weatherRepository.existsByCreatedAtAndLocationCode(candidate, locationCode)) {
                 continue;
             }
-            attemptedExternalCall = true;
             FetchResult result = fetchForTm(tm, locationCode, isStrongWindWarning, isDryWarning);
             if (result.error()) {
                 lastFetchFailureAt = now;
@@ -78,11 +76,6 @@ public class PublicApiService {
                 weatherRepository.saveAll(result.list());
                 return;
             }
-        }
-
-        if (attemptedExternalCall) {
-            // 빈 응답이 반복될 때 다음 주기에서 재호출 폭주를 막기 위해 쿨다운을 건다.
-            lastFetchFailureAt = now;
         }
     }
 

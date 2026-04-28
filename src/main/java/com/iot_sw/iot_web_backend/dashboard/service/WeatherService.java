@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,12 +21,11 @@ public class WeatherService {
 
     public WeatherResponseDto getWeather() {
 
-        List<WeatherData> list =
-                weatherRepository.findAllByOrderByCreatedAtDesc();
+        Optional<WeatherData> latest = weatherRepository.findTopByOrderByCreatedAtDesc();
 
         boolean[] alert = alertService.getAlert();
 
-        List<WeatherDTO> dtoList = list.stream()
+        List<WeatherDTO> dtoList = latest.stream()
                 .map(w -> new WeatherDTO(
                         w.getCreatedAt() != null ? w.getCreatedAt().format(TM_FORMATTER) : null,
                         w.getWindDirWd(),
