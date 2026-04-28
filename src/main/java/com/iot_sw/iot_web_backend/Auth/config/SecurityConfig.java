@@ -49,8 +49,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login").permitAll()
-                        .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/weather/**").authenticated()
-                        .requestMatchers("/devices/**").authenticated()
+                        .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/dashboard/**", "/devices/**").authenticated()
                         .anyRequest().permitAll())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
