@@ -9,6 +9,6 @@ public class RootController {
 
     @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE + ";charset=UTF-8")
     public String root() {
-        return "관측 텍스트: /api/weather";
+        return "관측 텍스트: /api/dashboard";
     }
 }
