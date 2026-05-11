@@ -33,6 +33,9 @@ public class PublicApiService {
     @Value("${kma.stn}")
     private String stn;
 
+    @Value("${kma.help:1}")
+    private String help;
+
     @Value("${weather.fetch.max-back-hours:3}")
     private int maxBackHours;
 
@@ -80,7 +83,7 @@ public class PublicApiService {
     }
 
     private FetchResult fetchForTm(String tm, int locationCode, byte isStrongWindWarning, byte isDryWarning) {
-        String requestUrl = String.format("%s?tm=%s&stn=%s&help=0&authKey=%s", url, tm, stn, authKey);
+        String requestUrl = String.format("%s?tm=%s&stn=%s&help=%s&authKey=%s", url, tm, stn, help, authKey);
         try {
             String response = restTemplate.getForObject(requestUrl, String.class);
             if (response == null || response.isBlank()) {

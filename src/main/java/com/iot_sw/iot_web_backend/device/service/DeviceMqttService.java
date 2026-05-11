@@ -41,15 +41,18 @@ public class DeviceMqttService {
         try {
             if (topic.equals("provisioning/request")) {
                 JsonNode json = objectMapper.readTree(payload);
+                String macAddress = firstText(json, "mac_address", "macId", "mac_id");
+                String ipAddress = firstText(json, "ip_address", "ipAddress", "ip");
 
-                //String macId = json.get("mac_address").asString();
-                //String location = json.has("location") ? json.get("location").asString() : "위치 미지정";
-                //String ipAddress = json.has("ip_address") ? json.get("ip_address").asString() : "0.0.0.0";
+                if (macAddress.isBlank()) {
+                    log.warn("[MQTT] provisioning/request에서 MAC 주소를 찾지 못했습니다. payload={}", payload);
+                    return;
+                }
 
                 // 서비스에 동작 위임
                 deviceService.registerPendingDevice(RegisterRequestDTO.builder()
-                                                    .macId(json.get("mac_address").asText())
-                                                    .ipAddress(json.has("ip_address") ? json.get("ip_address").asText() : "0.0.0.0")
+                                                    .macId(macAddress)
+                                                    .ipAddress(ipAddress.isBlank() ? "0.0.0.0" : ipAddress)
                                                     .build());
             }
             else if (topic.equals("devices/status")) {
@@ -106,6 +109,19 @@ public class DeviceMqttService {
         } catch (Exception e) {
             log.error("MQTT 파싱/처리 중 오류: {}", e.getMessage());
         }
+    }
+
+    private String firstText(JsonNode json, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode node = json.get(fieldName);
+            if (node != null && !node.isNull()) {
+                String value = node.asText("");
+                if (!value.isBlank()) {
+                    return value.trim();
+                }
+            }
+        }
+        return "";
     }
 
     // 1분마다 자동 배치 인서트 동작

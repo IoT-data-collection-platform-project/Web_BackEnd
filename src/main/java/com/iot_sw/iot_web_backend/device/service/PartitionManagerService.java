@@ -29,6 +29,11 @@ public class PartitionManagerService {
         String partitionName = "p_" + date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String lessThanValue = date.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 00:00:00";
 
+        if (partitionExists(partitionName)) {
+            log.debug("[DB] 파티션이 이미 존재합니다: {}", partitionName);
+            return;
+        }
+
         try {
             // p_max를 쪼개서 해당 날짜 파티션 생성
             String sql = String.format(
@@ -56,6 +61,11 @@ public class PartitionManagerService {
         String partitionName = "p_" + targetDate.minusDays(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String lessThanValue = targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 00:00:00";
 
+        if (partitionExists(partitionName)) {
+            log.debug("[DB] 다음 파티션이 이미 존재합니다: {}", partitionName);
+            return;
+        }
+
         try {
             String sql = String.format(
                     "ALTER TABLE sensor_telemetry REORGANIZE PARTITION p_max INTO (" +
@@ -68,6 +78,18 @@ public class PartitionManagerService {
         } catch (Exception e) {
             log.warn("[DB] 파티션 생성 건너뜀");
         }
+    }
+
+    private boolean partitionExists(String partitionName) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.PARTITIONS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'sensor_telemetry'
+                  AND PARTITION_NAME = ?
+                """;
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, partitionName);
+        return count != null && count > 0;
     }
 
     private void dropOldPartition(int daysAgo) {

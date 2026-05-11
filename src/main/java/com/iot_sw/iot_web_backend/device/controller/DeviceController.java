@@ -1,10 +1,10 @@
 package com.iot_sw.iot_web_backend.device.controller;
 
 import com.iot_sw.iot_web_backend.device.dto.request.ApproveRequestDTO;
+import com.iot_sw.iot_web_backend.device.dto.request.DeviceConnectionUpdateRequestDTO;
 import com.iot_sw.iot_web_backend.device.dto.request.RejectRequestDTO;
 import com.iot_sw.iot_web_backend.device.dto.response.ApproveResponseDTO;
-import com.iot_sw.iot_web_backend.device.entity.Device;
-import com.iot_sw.iot_web_backend.device.repository.DeviceRepository;
+import com.iot_sw.iot_web_backend.device.dto.response.DeviceConnectionResponseDTO;
 import com.iot_sw.iot_web_backend.device.service.DeviceService;
 import com.iot_sw.iot_web_backend.device.enums.DeviceStatus;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +19,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DeviceController {
 
-    private final DeviceRepository deviceRepository;
     private final DeviceService deviceService;
+
+    @GetMapping
+    public List<DeviceConnectionResponseDTO> getAllDevices() {
+        return deviceService.getAllDevices();
+    }
 
     // 승인 대기 중(PENDING)인 기기 목록 조회
     @GetMapping("/pending")
-    public List<Device> getPendingDevices() {
-        return deviceRepository.findByStatus(DeviceStatus.PENDING);
+    public List<DeviceConnectionResponseDTO> getPendingDevices() {
+        return deviceService.getDevicesByStatus(DeviceStatus.PENDING);
+    }
+
+    @GetMapping("/online")
+    public List<DeviceConnectionResponseDTO> getOnlineDevices() {
+        return deviceService.getDevicesByStatus(DeviceStatus.ONLINE);
+    }
+
+    @PostMapping("/connection")
+    public ResponseEntity<DeviceConnectionResponseDTO> upsertConnection(@RequestBody DeviceConnectionUpdateRequestDTO requestDTO) {
+        DeviceConnectionResponseDTO responseDTO = deviceService.upsertConnection(requestDTO);
+        return ResponseEntity.ok(responseDTO);
     }
 
     // 기기 승인

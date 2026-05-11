@@ -5,30 +5,32 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-
 @Service
 @RequiredArgsConstructor
 public class WeatherAlertService {
 
-    private static final DateTimeFormatter TM_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
-
     private final RestTemplate restTemplate;
 
-    @Value("${kma.warning.now.url}")
-    private String warningNowUrl;
+    @Value("${kma.warning.reg.url}")
+    private String warningRegUrl;
 
-    @Value("${kma.warning.fe}")
-    private String warningFe;
+    @Value("${kma.warning.type:WD}")
+    private String warningType;
+
+    @Value("${kma.warning.reg:108}")
+    private String warningRegion;
 
     @Value("${kma.warning.authKey}")
     private String warningAuthKey;
 
     public boolean[] getAlert() {
-        String tm = LocalDateTime.now(ZoneId.of("Asia/Seoul")).format(TM_FORMATTER);
-        String requestUrl = String.format("%s?fe=%s&tm=%s&disp=0&authKey=%s", warningNowUrl, warningFe, tm, warningAuthKey);
+        String requestUrl = String.format(
+                "%s?wrn=%s&reg=%s&authKey=%s",
+                warningRegUrl,
+                warningType,
+                warningRegion,
+                warningAuthKey
+        );
 
         if (warningAuthKey == null || warningAuthKey.isBlank()) {
             return new boolean[]{false, false};
@@ -58,22 +60,24 @@ public class WeatherAlertService {
         for (String line : lines) {
             line = line.trim();
 
-            if (line.startsWith("#") || line.isEmpty()) {
+            if (line.startsWith("#") || line.isEmpty() || !line.startsWith("L")) {
                 continue;
             }
 
             String[] tokens = line.split("\\s+");
-            for (String token : tokens) {
-                if ("W".equalsIgnoreCase(token)) {
-                    wind = true;
-                } else if ("D".equalsIgnoreCase(token)) {
-                    dry = true;
-                }
+            if (tokens.length < 5) {
+                continue;
             }
 
-            if (wind && dry) {
-                break;
+            String regSp = tokens[3];
+            // wrn_reg 응답의 REG_SP 코드에 1(강풍), 2(건조) 포함 여부로 판단
+            if (regSp.contains("1")) {
+                wind = true;
             }
+            if (regSp.contains("2")) {
+                dry = true;
+            }
+            break;
         }
 
         return new boolean[]{wind, dry};
