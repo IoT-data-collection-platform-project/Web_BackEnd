@@ -307,6 +307,14 @@ function Weather() {
     [data],
   );
 
+  const hasMqttIndoorData = useMemo(() => {
+    const source = activeMac ? telemetryByMac[activeMac] ?? null : latestTelemetry;
+    if (!source) return false;
+    return [source.temperature, source.humidity, source.pressure, source.tvoc, source.eco2, source.flameValue].some(
+      (v) => v != null,
+    );
+  }, [activeMac, latestTelemetry, telemetryByMac]);
+
   const fetchLatestAnalysis = useCallback(
     async (mac) => {
       const params = new URLSearchParams();
@@ -601,7 +609,7 @@ function Weather() {
     );
   }
 
-  if (!data) {
+  if (!data && !hasMqttIndoorData) {
     return (
       <div className="h-full bg-slate-100 p-6 tracking-[-0.02em] leading-relaxed">
         <div className={`mx-auto max-w-6xl rounded-[24px] border border-slate-300/70 bg-white p-6 ${cardShadow}`}>

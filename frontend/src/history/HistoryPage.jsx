@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../Auth/api";
+import { apiFetch, readApiMessage } from "../Auth/api";
 
 const PERIODS = [
   { key: "daily", labelKo: "일별", labelEn: "Daily" },
@@ -10,7 +10,8 @@ const PERIODS = [
 ];
 
 const DEVICES_STORAGE_KEY = "iot.connectedDevices";
-const SELECTED_DEVICE_KEY = "iot.selectedDeviceId";
+const SELECTED_DEVICE_ID_KEY = "iot.selectedDeviceId";
+const SELECTED_DEVICE_MAC_KEY = "iot.selectedDeviceMac";
 
 function parseStorageArray(raw) {
   if (!raw) return [];
@@ -23,8 +24,14 @@ function parseStorageArray(raw) {
 }
 
 function getSelectedMac() {
+  const selectedMacFromStorage =
+    sessionStorage.getItem(SELECTED_DEVICE_MAC_KEY) || localStorage.getItem(SELECTED_DEVICE_MAC_KEY) || "";
+  if (selectedMacFromStorage && selectedMacFromStorage !== "00:00:00:00:00:00") {
+    return selectedMacFromStorage;
+  }
+
   const selectedId =
-    sessionStorage.getItem(SELECTED_DEVICE_KEY) || localStorage.getItem(SELECTED_DEVICE_KEY) || "";
+    sessionStorage.getItem(SELECTED_DEVICE_ID_KEY) || localStorage.getItem(SELECTED_DEVICE_ID_KEY) || "";
   const devices =
     parseStorageArray(sessionStorage.getItem(DEVICES_STORAGE_KEY)).length > 0
       ? parseStorageArray(sessionStorage.getItem(DEVICES_STORAGE_KEY))
@@ -67,6 +74,26 @@ function formatDateLabel(dateString) {
 
 function toDateInputValue(date) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function hasAnyMetric(points) {
+  return points.some((point) =>
+    [
+      point?.indoorTemp,
+      point?.indoorHumidity,
+      point?.indoorPressure,
+      point?.indoorTvoc,
+      point?.indoorEco2,
+      point?.indoorFlame,
+      point?.outdoorTemp,
+      point?.wd,
+      point?.ws,
+      point?.outdoorHumidity,
+      point?.rn,
+      point?.ta,
+      point?.hm,
+    ].some((value) => value != null),
+  );
 }
 
 function mondayOfWeek(dateText) {
@@ -124,16 +151,15 @@ function HistoryPage() {
             if (meRes?.ok) {
               throw new Error("retryable-auth");
             }
-            navigate("/", { replace: true });
-            throw new Error("unauthorized-redirect");
+            throw new Error("로그인이 만료되었습니다. 다시 로그인해주세요.");
           }
-          throw new Error();
+          throw new Error(await readApiMessage(response, "히스토리 데이터를 불러오지 못했습니다."));
         }
         return response.json();
       })
       .then(async (data) => {
         const points = Array.isArray(data?.points) ? data.points : [];
-        if (mac && points.length === 0) {
+        if (mac && !hasAnyMetric(points)) {
           const fallbackQuery = new URLSearchParams({ period });
           if (period === "daily" && selectedDate) fallbackQuery.set("date", selectedDate);
           if (period === "weekly") {
@@ -156,7 +182,6 @@ function HistoryPage() {
       })
       .catch((e) => {
         if (!active) return;
-        if (String(e?.message || "") === "unauthorized-redirect") return;
         if (String(e?.message || "") === "retryable-auth") {
           setTimeout(() => {
             if (!active) return;
@@ -164,7 +189,17 @@ function HistoryPage() {
           }, 500);
           return;
         }
-        setError("히스토리 데이터를 불러오지 못했습니다.");
+        const message = String(e?.message || "").trim();
+        if (message.includes("로그인이 만료되었습니다")) {
+          setError(message);
+          setTimeout(() => navigate("/", { replace: true }), 800);
+          return;
+        }
+        if (message.toLowerCase().includes("failed to fetch") || message.toLowerCase().includes("networkerror")) {
+          setError("서버에 연결할 수 없습니다. 백엔드 실행 상태를 확인해주세요.");
+          return;
+        }
+        setError(message || "히스토리 데이터를 불러오지 못했습니다.");
       })
       .finally(() => active && setLoading(false));
 
