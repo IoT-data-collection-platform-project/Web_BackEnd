@@ -214,8 +214,8 @@ public class AnalysisController {
                         .fire_alarm(control.getFireAlarm())
                         .build())
                 .alert(AnalysisRequestDto.Alert.builder()
-                        .category("MANUAL_REFRESH")
-                        .severity("NORMAL")
+                        .category("UNKNOWN")
+                        .severity("UNKNOWN")
                         .build())
                 .build();
     }
