@@ -153,66 +153,73 @@ public class AnalysisController {
             Environment env,
             ControlStatus control
     ) {
-        boolean tempRelatedEnabled =
-                isEnabled(control.getAirConditioner()) ||
-                isEnabled(control.getHeating()) ||
-                isEnabled(control.getNorthWindow()) ||
-                isEnabled(control.getSouthWindow()) ||
-                isEnabled(control.getEastWindow()) ||
-                isEnabled(control.getWestWindow());
-        boolean humidityRelatedEnabled =
-                isEnabled(control.getHumidifier()) ||
-                isEnabled(control.getDehumidifier());
-        boolean airQualityRelatedEnabled = isEnabled(control.getAirCleaner());
-        boolean fireRelatedEnabled =
-                isEnabled(control.getFireAlarm()) ||
-                isEnabled(control.getSprinkler());
+        // 날씨 데이터 조립
+        AnalysisRequestDto.Outdoor outdoorDto;
+        if (weather != null) {
+            outdoorDto = AnalysisRequestDto.Outdoor.builder()
+                    .ta(weather.getTempTa() != null ? weather.getTempTa() : 0.0)
+                    .wd(weather.getWindDirWd() != null ? weather.getWindDirWd() : 0.0)
+                    .ws(weather.getWindSpeedWs() != null ? weather.getWindSpeedWs() : 0.0)
+                    .hm(weather.getHumidityHm() != null ? weather.getHumidityHm() : 0.0)
+                    .rn(weather.getPrecipitationRn() != null ? weather.getPrecipitationRn() : 0.0)
+                    .isSW(weather.getIsStrongWindWarning() != null && weather.getIsStrongWindWarning() > 0)
+                    .isDW(weather.getIsDryWarning() != null && weather.getIsDryWarning() > 0)
+                    .build();
+        } else {
+            log.warn("[AI] MAC: {} - 최신 날씨 데이터를 찾을 수 없어 기본값(0.0)으로 진행합니다.", mac);
+            outdoorDto = AnalysisRequestDto.Outdoor.builder()
+                    .ta(0.0).wd(0.0).ws(0.0).hm(0.0).rn(0.0)
+                    .isSW(false).isDW(false)
+                    .build();
+        }
 
+        // DTO 조립
         return AnalysisRequestDto.builder()
                 .macAddress(mac)
+
+                // 실내 데이터
                 .indoor(AnalysisRequestDto.Indoor.builder()
-                        .temperature(tempRelatedEnabled ? toDouble(sensor.getTemperature()) : null)
-                        .humidity(humidityRelatedEnabled ? toDouble(sensor.getHumidity()) : null)
-                        .pressure(tempRelatedEnabled ? toDouble(sensor.getPressure()) : null)
-                        .tvoc(airQualityRelatedEnabled ? sensor.getTvoc() : null)
-                        .eco2(airQualityRelatedEnabled ? sensor.getEco2() : null)
-                        .flame(fireRelatedEnabled ? sensor.getFlameValue() : null)
+                        .temperature(toDouble(sensor.getTemperature()))
+                        .humidity(toDouble(sensor.getHumidity()))
+                        .pressure(toDouble(sensor.getPressure()))
+                        .tvoc(sensor.getTvoc() != null ? sensor.getTvoc() : 0)
+                        .eco2(sensor.getEco2() != null ? sensor.getEco2() : 0)
+                        .flame(sensor.getFlameValue() != null ? sensor.getFlameValue() : 0)
                         .build())
-                .outdoor(AnalysisRequestDto.Outdoor.builder()
-                        .ta(weather != null ? weather.getTempTa() : null)
-                        .wd(weather != null ? weather.getWindDirWd() : null)
-                        .ws(weather != null ? weather.getWindSpeedWs() : null)
-                        .hm(weather != null ? weather.getHumidityHm() : null)
-                        .rn(weather != null ? weather.getPrecipitationRn() : null)
-                        .isSW(weather != null && weather.getIsStrongWindWarning() != null && weather.getIsStrongWindWarning() > 0)
-                        .isDW(weather != null && weather.getIsDryWarning() != null && weather.getIsDryWarning() > 0)
-                        .build())
+
+                // 날씨 데이터
+                .outdoor(outdoorDto)
+
+                // 인프라 유무
                 .setting(AnalysisRequestDto.Setting.builder()
-                        .north_window(env.getNorthWindow())
-                        .south_window(env.getSouthWindow())
-                        .east_window(env.getEastWindow())
-                        .west_window(env.getWestWindow())
-                        .air_conditioner(env.getAirConditioner())
-                        .heating(env.getHeating())
-                        .humidifier(env.getHumidifier())
-                        .dehumidifier(env.getDehumidifier())
-                        .air_cleaner(env.getAirCleaner())
-                        .sprinkler(env.getSprinkler())
-                        .fire_alarm(env.getFireAlarm())
+                        .north_window(Boolean.TRUE.equals(env.getNorthWindow()))
+                        .south_window(Boolean.TRUE.equals(env.getSouthWindow()))
+                        .east_window(Boolean.TRUE.equals(env.getEastWindow()))
+                        .west_window(Boolean.TRUE.equals(env.getWestWindow()))
+                        .air_conditioner(Boolean.TRUE.equals(env.getAirConditioner()))
+                        .heating(Boolean.TRUE.equals(env.getHeating()))
+                        .humidifier(Boolean.TRUE.equals(env.getHumidifier()))
+                        .dehumidifier(Boolean.TRUE.equals(env.getDehumidifier()))
+                        .air_cleaner(Boolean.TRUE.equals(env.getAirCleaner()))
+                        .sprinkler(Boolean.TRUE.equals(env.getSprinkler()))
+                        .fire_alarm(Boolean.TRUE.equals(env.getFireAlarm()))
                         .build())
+
+                // 인프라 현재 제어 상태
                 .control(AnalysisRequestDto.Control.builder()
-                        .north_window(control.getNorthWindow())
-                        .south_window(control.getSouthWindow())
-                        .east_window(control.getEastWindow())
-                        .west_window(control.getWestWindow())
-                        .air_conditioner(control.getAirConditioner())
-                        .heating(control.getHeating())
-                        .humidifier(control.getHumidifier())
-                        .dehumidifier(control.getDehumidifier())
-                        .air_cleaner(control.getAirCleaner())
-                        .sprinkler(control.getSprinkler())
-                        .fire_alarm(control.getFireAlarm())
+                        .north_window(Boolean.TRUE.equals(control.getNorthWindow()))
+                        .south_window(Boolean.TRUE.equals(control.getSouthWindow()))
+                        .east_window(Boolean.TRUE.equals(control.getEastWindow()))
+                        .west_window(Boolean.TRUE.equals(control.getWestWindow()))
+                        .air_conditioner(Boolean.TRUE.equals(control.getAirConditioner()))
+                        .heating(Boolean.TRUE.equals(control.getHeating()))
+                        .humidifier(Boolean.TRUE.equals(control.getHumidifier()))
+                        .dehumidifier(Boolean.TRUE.equals(control.getDehumidifier()))
+                        .air_cleaner(Boolean.TRUE.equals(control.getAirCleaner()))
+                        .sprinkler(Boolean.TRUE.equals(control.getSprinkler()))
+                        .fire_alarm(Boolean.TRUE.equals(control.getFireAlarm()))
                         .build())
+
                 .alert(AnalysisRequestDto.Alert.builder()
                         .category("UNKNOWN")
                         .severity("UNKNOWN")
@@ -221,7 +228,7 @@ public class AnalysisController {
     }
 
     private Double toDouble(BigDecimal value) {
-        return value == null ? null : value.doubleValue();
+        return value == null ? 0.0 : value.doubleValue();
     }
 
     private boolean isEnabled(Boolean value) {
