@@ -61,4 +61,9 @@ public class DeviceController {
 
         return ResponseEntity.ok().body("기기 거절 완료");
     }
+
+    @GetMapping("/online")
+    public List<Device> getOnlineDevices() {
+        return deviceRepository.findByStatus(DeviceStatus.ONLINE);
+    }
 }
