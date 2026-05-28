@@ -49,7 +49,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/password-reset/request", "/api/auth/password-reset/confirm").permitAll()
-                        .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/dashboard/**", "/api/history/**", "/api/control/**", "/api/ai/**", "/devices/**").authenticated()
+                        .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/dashboard/**", "/api/history/**", "/api/control/**", "/api/ai/**", "/api/devices/**",
+                                "/api/alerts/**").authenticated()
                         .anyRequest().permitAll())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)

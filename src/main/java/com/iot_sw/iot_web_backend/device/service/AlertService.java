@@ -211,7 +211,7 @@ public class AlertService {
 
     public void buildAndRequestAiAnalysis(Long deviceId, String macAddress, String category, String severity, SensorDataDTO sensorDto) {
         try {
-            // 1. DB에서 기기 설치 유무(Setting) 및 현재 상태(Control) 조회
+            // DB 데이터 유무 검사
             Environment env = environmentRepository.findByDeviceId(deviceId).orElse(null);
             ControlStatus status = controlStatusRepository.findByDeviceId(deviceId).orElse(null);
 
@@ -220,7 +220,7 @@ public class AlertService {
                 return;
             }
 
-            // 2. 🌟 최신 날씨 데이터(Outdoor) 조회
+            // 기상 데이터 조회
             WeatherData weather = weatherRepository.findTopByOrderByCreatedAtDesc().orElse(null);
             AnalysisRequestDto.Outdoor outdoorDto;
 
@@ -240,9 +240,9 @@ public class AlertService {
                 outdoorDto = AnalysisRequestDto.Outdoor.builder().build(); // 빈 객체 할당
             }
 
-            // 3. DTO 조립
+            // 데이터 패키징
             AnalysisRequestDto requestDto = AnalysisRequestDto.builder()
-                    .macAddress(macAddress)
+                    .macAddress(macAddress) // 기기 맥주소
                     .indoor(AnalysisRequestDto.Indoor.builder()
                             .temperature(sensorDto.getTemperature())
                             .humidity(sensorDto.getHumidity())
@@ -250,8 +250,8 @@ public class AlertService {
                             .tvoc(sensorDto.getTvoc())
                             .eco2(sensorDto.getEco2())
                             .flame(sensorDto.getFlameValue())
-                            .build())
-                    .outdoor(outdoorDto) // 🌟 조립된 날씨 객체 주입
+                            .build()) // 실내 데이터
+                    .outdoor(outdoorDto) // 날씨 데이터
                     .setting(AnalysisRequestDto.Setting.builder()
                             .north_window(env.getNorthWindow())
                             .south_window(env.getSouthWindow())
@@ -264,7 +264,7 @@ public class AlertService {
                             .air_cleaner(env.getAirCleaner())
                             .sprinkler(env.getSprinkler())
                             .fire_alarm(env.getFireAlarm())
-                            .build())
+                            .build()) // 인프라 유무
                     .control(AnalysisRequestDto.Control.builder()
                             .north_window(status.getNorthWindow())
                             .south_window(status.getSouthWindow())
@@ -277,14 +277,14 @@ public class AlertService {
                             .air_cleaner(status.getAirCleaner())
                             .sprinkler(status.getSprinkler())
                             .fire_alarm(status.getFireAlarm())
-                            .build())
+                            .build()) // 인프라 제어 상태
                     .alert(AnalysisRequestDto.Alert.builder()
                             .category(category)
                             .severity(severity)
-                            .build())
+                            .build()) // 발생 알람 종류
                     .build();
 
-            // 4. AnalysisService로 AI 요청 던지기
+            // AI 분석 로직 실행
             analysisService.requestAiAnalysis(deviceId, requestDto);
 
         } catch (Exception e) {
