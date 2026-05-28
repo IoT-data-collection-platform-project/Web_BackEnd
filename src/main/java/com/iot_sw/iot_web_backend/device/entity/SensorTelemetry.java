@@ -17,7 +17,6 @@ public class SensorTelemetry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 💡 단일 객체 연관관계로 변경
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "device_id", nullable = false)
     private Device device;
